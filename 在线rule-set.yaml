@@ -1,0 +1,243 @@
+# ———————————————— 1. 定义健康检查模板 ————————————————
+p: &p
+  type: http
+  interval: 86400 # 单位：秒。定义多久更新一次订阅节点信息
+  health-check:
+    enable: true
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+  proxy: 订阅更新
+  header: # 主要用于访问机场更新订阅，如遇订阅加载不出来请切换ua
+      User-Agent:  # 使用注释法由上到下 默认使用第一个
+        - "clash-verge/v2.2.3"
+        - "ClashMetaForAndroid/2.11.2.Meta"
+        - "ClashforWindows/0.19.23"
+        - "clash.meta"
+        - "mihomo"
+
+# ———————————————— 2. 订阅链接引用模板 ————————————————
+proxy-providers:
+  provider1:
+    <<: *p
+    url: "" #在此双引号处填写您的clash订阅链接
+    filter: "(?i)^(?!.*(免费|套餐|重置|剩余|到期|订阅|群|账户|流量|有效期|时间|官网|失联|余额|拒绝|DNS|Ch|Reset|Expiry|Traffic)).*$"
+    override:
+      additional-prefix: "[provider1]"
+
+proxies: 
+  - name: "直连"
+    type: direct
+    udp: true
+
+# ———————————————— 3. 基础设置 ————————————————
+mixed-port: 7890 # 设置 HTTP(S) 和 SOCKS5 代理合并监听的端口
+ipv6: true # 开启 IPv6 支持
+allow-lan: true # 允许局域网设备通过此设备连接代理
+unified-delay: true # 统一延迟计算（开启后会去除 TCP 握手以外的干扰，测速更准确）
+tcp-concurrent: true # 开启 TCP 并发连接，多条路径同时握手，提升网页开启速度
+keep-alive-interval: 30 # 单位：秒。保持连接活跃，减少长连接断开的情况。
+external-controller: 127.0.0.1:9090 # RESTful API 的监听地址，供管理面板（如 Dashboard）连接
+external-ui: ui # 指定本地管理面板文件的存储目录
+external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip" # 自动下载管理面板的压缩包地址
+
+geodata-mode: false # 开启 GeoData 数据库模式（如果禁用，则切换到使用 mmdb 数据库模式）
+
+find-process-mode: always # 进程匹配模式：分为 strict(严格模式)、always(总是匹配模式) 和 off(关闭)
+global-client-fingerprint: chrome # 全局客户端指纹，模拟 Chrome 浏览器以减少被检测风险
+
+profile: # 存储设置
+  store-selected: true # 记忆上次选中的节点分组状态
+  store-fake-ip: true # 记忆 Fake-IP 映射关系，防止重启后连接失效
+
+sniffer: # 流量嗅探设置，用于从连接中还原域名，匹配更精准
+  enable: true # 开启嗅探功能
+  sniff: # 定义需要嗅探的协议及端口
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true # 嗅探出的真实域名覆盖原始目标地址，让分流更准
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+  skip-domain: # 排除不需要嗅探的域名列表
+    - "Mijia Cloud"
+    - "+.push.apple.com"
+
+tun: # TUN 模式设置（创建虚拟网卡以接管全系统流量）
+  enable: false # 是否开启 TUN 模式
+  stack: mixed # 网络协议栈类型：混合模式（兼顾性能与兼容性）
+  dns-hijack: # 劫持 DNS 请求到内核进行处理
+    - "any:53"
+    - "tcp://any:53"
+  auto-route: true # 自动设置系统路由，使流量通过虚拟网卡
+  auto-redirect: true # 自动重定向流量（适用于部分平台）
+  auto-detect-interface: true # 自动检测物理网卡，防止环路
+
+# ———————————————— 4. DNS设置 ————————————————
+dns:
+  enable: true
+  ipv6: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 172.20.0.1/16  # 自定义虚拟ip的范围，不可与局域网网段冲突。如不定义，默认是：192.168.0.1/16
+  fake-ip-filter:   # Fake-IP 白名单，定义哪些域名不使用虚拟ip进行请求
+    - "+.lan"   # 过滤所有局域网域名
+    - "+.local" # 过滤所有本地组播域名
+    - "Mijia Cloud" # 过滤米家云端，防止智能家居掉线
+    - "+.push.apple.com"    # 确保苹果推送稳定
+  default-nameserver: #基础dns，仅解析 DNS 配置里出现的域名
+    - 223.5.5.5
+    - 8.8.8.8
+  nameserver: # dns主服务器，解析用户访问的所有其他域名
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+    - https://dns.google/dns-query
+    - https://cloudflare-dns.com/dns-query
+  nameserver-policy: # dns分流
+    "rule-set:private_domain,cn_domain": # 国内域名走国内dns，加快日常访问速度
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
+  proxy-server-nameserver: # 解析节点配置里出现的域名
+    - https://dns.alidns.com/dns-query
+    - https://dns.google/dns-query
+
+# ———————————————— 5. 代理分组 ————————————————
+proxy-groups:
+# 默认分组
+  - name: 默认
+    type: select
+    proxies: [延迟最低, 手动选择, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 直连]
+
+  - name: 延迟最低
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)^(?!.*(下载专用)).*$"
+    # tolerance: 50 # 定义节点延迟大于多少才切换节点，默认50
+    # interval: 300 # 单位：秒。定义多久检测一次节点延迟，默认300秒（5分钟）
+
+  - name: 手动选择
+    type: select
+    include-all: true
+    exclude-type: direct
+    
+# 应用分组
+  - name: AI
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)^(?!.*(港|hk|hongkong|hong kong|台|tw|taiwan)).*$"   # AI分组排除香港和台湾节点
+
+  - name: Bing
+    type: select
+    proxies: [默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低, 直连]
+
+  - name: Microsoft
+    type: select
+    proxies: [默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低, 直连]
+    
+# 地区分组
+  - name: 香港
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)港|hk|hongkong|hong kong"
+
+  - name: 台湾
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)台|tw|taiwan"
+
+  - name: 日本
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)日|jp|japan"
+
+  - name: 美国
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)美|us|unitedstates|united states"
+
+  - name: 新加坡
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)(新|sg|singapore)"
+
+  - name: 其它地区
+    type: url-test
+    include-all: true
+    exclude-type: direct
+    filter: "(?i)^(?!.*(?:🇭🇰|🇯🇵|🇺🇸|🇸🇬|🇨🇳|港|hk|hongkong|台|tw|taiwan|日|jp|japan|新|sg|singapore|美|us|unitedstates)).*"
+
+  - name: 国内
+    type: select
+    proxies: [直连, 默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低]
+
+# 其它分组
+  - name: 订阅更新
+    type: fallback
+    proxies: [直连, 默认]
+    
+  - name: 漏网之鱼
+    type: select
+    proxies: [默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低, 直连]
+
+# ———————————————— 6. 规则设置 ————————————————
+# GEOSITE类规则需要在 https://github.com/v2fly/domain-list-community/blob/master/data 查找对应的字段名称
+# GEOIP类规则，直接以国家代号简写为字段名称，如：CN: 中国,US: 美国,HK: 香港,JP: 日本
+# ASN类规则的字段（自治系统编号）,需要在特定的系统上查找编号,格式通常是 AS 后接数字，例如： AS4538（中国教育和科研计算机网）。
+# RULE-SET类规则需要在 https://github.com/MetaCubeX/meta-rules-dat/blob/meta/geo/geosite/ 查找对应的字段名称，并且在 rule-providers 段定义好文件路径
+
+rules:
+  - RULE-SET,private_domain,直连
+  - RULE-SET,private_ip,直连,no-resolve
+
+# 应用分组
+  - RULE-SET,openai,AI
+  - RULE-SET,gemini,AI
+  - RULE-SET,bing,Bing
+  - RULE-SET,microsoft,Microsoft
+
+# 其它分组
+  - RULE-SET,cn_domain,国内
+  - RULE-SET,cn_ip,国内
+  - RULE-SET,geolocation-!cn,漏网之鱼
+  - MATCH,漏网之鱼
+
+# 规则锚点
+rule-anchor:
+  ip: &ip {type: http, interval: 86400, behavior: ipcidr, format: mrs}
+  domain: &domain {type: http, interval: 86400, behavior: domain, format: mrs}
+
+# 定义在线数据库文件
+rule-providers:
+  private_domain:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs"
+  openai:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/openai.mrs"
+  gemini:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google-gemini.mrs"
+  bing:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/bing.mrs"
+  microsoft:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft.mrs"
+  cn_domain:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs"
+  geolocation-!cn:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs"
+  private_ip:
+    <<: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/private.mrs"
+  cn_ip:
+    <<: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"
