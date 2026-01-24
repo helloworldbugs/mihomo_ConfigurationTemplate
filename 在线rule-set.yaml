@@ -64,7 +64,7 @@ sniffer: # 流量嗅探设置，用于从连接中还原域名，匹配更精准
     - "+.push.apple.com"
 
 tun: # TUN 模式设置（创建虚拟网卡以接管全系统流量）
-  enable: false # 是否开启 TUN 模式
+  enable: true # 是否开启 TUN 模式
   stack: mixed # 网络协议栈类型：混合模式（兼顾性能与兼容性）
   dns-hijack: # 劫持 DNS 请求到内核进行处理
     - "any:53"
