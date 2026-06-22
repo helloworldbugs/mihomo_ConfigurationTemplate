@@ -19,7 +19,7 @@
 - **sniffer.skip-domain** 复用 `private_domain` 规则库，局域网/内部域名自动跳过嗅探
 - **NTP 时间同步** 全部配置添加，保持系统时间准确
 - **keep-alive-idle** 连接空闲超时设置
-- **Tproxy.yaml** 按统一结构重排，补充完整注释和 `iptables` 自动路由
+- **Tproxy.yaml** 新增Tproxy.yaml 配置文件，linux/路由器等设备下的最佳实践
 
 ## 使用说明
 
