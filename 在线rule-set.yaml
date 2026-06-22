@@ -36,6 +36,7 @@ allow-lan: true # 允许局域网设备通过此设备连接代理
 unified-delay: true # 统一延迟计算（开启后会去除 TCP 握手以外的干扰，测速更准确）
 tcp-concurrent: true # 开启 TCP 并发连接，多条路径同时握手，提升网页开启速度
 keep-alive-interval: 30 # 单位：秒。保持连接活跃，减少长连接断开的情况。
+keep-alive-idle: 600 # 单位：秒。连接空闲多久后关闭
 external-controller: 127.0.0.1:9090 # RESTful API 的监听地址，供管理面板（如 Dashboard）连接
 external-ui: ui # 指定本地管理面板文件的存储目录
 external-ui-url: "https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages-no-fonts.zip" # 自动下载管理面板的压缩包地址
@@ -60,8 +61,16 @@ sniffer: # 流量嗅探设置，用于从连接中还原域名，匹配更精准
     QUIC:
       ports: [443, 8443]
   skip-domain: # 排除不需要嗅探的域名列表
-    - "Mijia Cloud"
-    - "+.push.apple.com"
+    - "RULE-SET:private_domain" # 复用已有的 private 规则库，局域网/内部域名无需嗅探
+    - "Mijia Cloud" # 小米 IoT 域名，保留内联
+    - "+.push.apple.com" # Apple 推送域名，保留内联
+
+ntp: # NTP 时间同步设置，让系统时间保持准确
+  enable: true # 是否开启 NTP 时间同步
+  write-to-system: true # 是否将同步后的时间写入系统
+  server: time.apple.com # NTP 时间服务器地址
+  port: 123 # NTP 服务端口
+  interval: 30 # 单位：分钟。定义多久同步一次时间
 
 tun: # TUN 模式设置（创建虚拟网卡以接管全系统流量）
   enable: true # 是否开启 TUN 模式
@@ -79,15 +88,7 @@ dns:
   ipv6: true
   enhanced-mode: fake-ip
   fake-ip-range: 172.20.0.1/16  # 自定义虚拟ip的范围，不可与局域网网段冲突。如不定义，默认是：192.168.0.1/16
-  fake-ip-filter:   # Fake-IP 白名单，定义哪些域名不使用虚拟ip进行请求
-    - "+.lan"       # 过滤所有局域网域名
-    - "+.local"     # 过滤所有本地组播域名
-    - "+.mi.com"    # 过滤小米/米家域名，防止智能家居掉线
-    - "+.xiaomi.com"
-    - "+.push.apple.com"    # 确保苹果推送稳定
-    - "+.ntp.*"     # 过滤 NTP 时间同步服务器（匹配大部分 ntp 域名）
-    - "time.apple.com"
-    - "time.windows.com"
+  fake-ip-filter: ['rule-set:fakeip-filter']
   default-nameserver: #基础dns，仅解析 DNS 配置里出现的域名
     - 223.5.5.5
     - 8.8.8.8
@@ -254,3 +255,9 @@ rule-providers:
   cn_ip:
     <<: *ip
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"
+  fakeip-filter:
+    type: http # 规则提供方式：通过网络下载
+    behavior: domain # 匹配行为：按域名匹配
+    format: mrs # 数据库格式：MRS 二进制格式（文件小、加载快）
+    path: ./rule_providers/fake-ip-filter.mrs # 本地缓存路径
+    url: "https://cdn.jsdelivr.net/gh/DustinWin/ruleset_geodata@mihomo-ruleset/fakeip-filter.mrs" # 在线规则库下载地址

@@ -3,17 +3,17 @@ p: &p
   type: http
   interval: 86400 # 单位：秒。定义多久更新一次订阅节点信息
   health-check:
-    enable: true
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-  proxy: 订阅更新
+    enable: true # 开启健康检查
+    url: https://www.gstatic.com/generate_204 # 健康检查地址，用于检测节点连通性
+    interval: 300 # 单位：秒。定义多久检测一次节点健康状态
+  proxy: 订阅更新 # 使用"订阅更新"分组进行更新
   header: # 主要用于访问机场更新订阅，如遇订阅加载不出来请切换ua
-      User-Agent:  # 使用注释法由上到下 默认使用第一个
-        - "clash-verge/v2.2.3"
-        - "ClashMetaForAndroid/2.11.2.Meta"
-        - "ClashforWindows/0.19.23"
-        - "clash.meta"
-        - "mihomo"
+    User-Agent: # 使用注释法由上到下 默认使用第一个
+      - "clash-verge/v2.2.3"
+      - "ClashMetaForAndroid/2.11.2.Meta"
+      - "ClashforWindows/0.19.23"
+      - "clash.meta"
+      - "mihomo"
 
 # ———————————————— 2. 订阅链接引用模板 ————————————————
 proxy-providers:
@@ -24,7 +24,7 @@ proxy-providers:
     override:
       additional-prefix: "[provider1]"
 
-proxies: 
+proxies:
   - name: "直连"
     type: direct
     udp: true
@@ -35,22 +35,15 @@ ipv6: true # 开启 IPv6 支持
 allow-lan: true # 允许局域网设备通过此设备连接代理
 unified-delay: true # 统一延迟计算（开启后会去除 TCP 握手以外的干扰，测速更准确）
 tcp-concurrent: true # 开启 TCP 并发连接，多条路径同时握手，提升网页开启速度
-keep-alive-interval: 30 # 单位：秒。保持连接活跃，减少长连接断开的情况。
+keep-alive-interval: 15 # 单位：秒。保持连接活跃，减少长连接断开的情况。
 keep-alive-idle: 600 # 单位：秒。连接空闲多久后关闭
-external-controller: 127.0.0.1:9090 # RESTful API 的监听地址，供管理面板（如 Dashboard）连接
-external-ui: ui # 指定本地管理面板文件的存储目录
-external-ui-url: "https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages-no-fonts.zip" # 自动下载管理面板的压缩包地址
+external-controller: 0.0.0.0:7788 # RESTful API 的监听地址，供管理面板（如 Dashboard）连接（0.0.0.0 表示允许局域网设备访问）
+secret: "123456" # RESTful API 的访问密钥，管理面板登录需要此密码
+external-ui: WebUI/zashboard # 指定本地管理面板文件的存储目录
+external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip" # 自动下载管理面板的压缩包地址
 
 geodata-mode: true # 开启 GeoData 数据库模式（如果禁用，则切换到使用 mmdb 数据库模式）
-geo-auto-update: true # 开启 Geo 数据库自动更新
-geo-update-interval: 24 # 设置每 24 小时检查一次数据库更新
-geox-url: # 自定义数据库下载地址（GeoIP、GeoSite、mmdb 等）
-  geoip: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat"
-  geosite: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
-  mmdb: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country-lite.mmdb"
-  asn: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb"
-
-find-process-mode: always # 进程匹配模式：分为 strict(严格模式)、always(总是匹配模式) 和 off(关闭)
+find-process-mode: "off" # 进程匹配模式：分为 strict(严格模式)、always(总是匹配模式) 和 off(关闭)。TPROXY 下关闭更稳定
 global-client-fingerprint: chrome # 全局客户端指纹，模拟 Chrome 浏览器以减少被检测风险
 
 profile: # 存储设置
@@ -72,6 +65,16 @@ sniffer: # 流量嗅探设置，用于从连接中还原域名，匹配更精准
     - "Mijia Cloud" # 小米 IoT 域名，保留内联
     - "+.push.apple.com" # Apple 推送域名，保留内联
 
+# TPROXY 模式设置（透明代理，Linux 下性能优秀的代理方式）
+tproxy-port: 7893 # TPROXY 透明代理监听端口
+iptables: # TPROXY 自动路由设置（让 mihomo 自动管理 iptables/nftables 规则，等同于 TUN 模式的 auto-route）
+  enable: true # 开启后 mihomo 自动配置防火墙引流规则
+  inbound-interface: eth0 # 入站流量接口，路由器环境设为 WAN 口，桌面环境默认 lo 即可
+cmfa-plugin: # CMFA 插件设置
+  mode: tproxy # 插件运行模式：tproxy（透明代理模式）
+  dashboard: zashboard # 使用的管理面板名称
+  mosdns_enable: false # 是否开启 mosdns
+
 ntp: # NTP 时间同步设置，让系统时间保持准确
   enable: true # 是否开启 NTP 时间同步
   write-to-system: true # 是否将同步后的时间写入系统
@@ -79,23 +82,14 @@ ntp: # NTP 时间同步设置，让系统时间保持准确
   port: 123 # NTP 服务端口
   interval: 30 # 单位：分钟。定义多久同步一次时间
 
-tun: # TUN 模式设置（创建虚拟网卡以接管全系统流量）
-  enable: true # 是否开启 TUN 模式
-  stack: mixed # 网络协议栈类型：混合模式（兼顾性能与兼容性）
-  dns-hijack: # 劫持 DNS 请求到内核进行处理
-    - "any:53"
-    - "tcp://any:53"
-  auto-route: true # 自动设置系统路由，使流量通过虚拟网卡
-  auto-redirect: true # 自动重定向流量（适用于部分平台）
-  auto-detect-interface: true # 自动检测物理网卡，防止环路
-
 # ———————————————— 4. DNS设置 ————————————————
 dns:
   enable: true
   ipv6: true
   enhanced-mode: fake-ip
-  fake-ip-range: 172.20.0.1/16  # 自定义虚拟ip的范围，不可与局域网网段冲突。如不定义，默认是：192.168.0.1/16
-  fake-ip-filter: ['rule-set:fakeip-filter']
+  fake-ip-range: 198.18.0.0/16 # 自定义虚拟ip的范围，不可与局域网网段冲突。如不定义，默认是：192.168.0.1/16
+  fake-ip-filter: ['rule-set:fakeip-filter'] # 使用在线规则库过滤 Fake-IP 域名
+  listen: 0.0.0.0:1053 # DNS 监听地址和端口（0.0.0.0 表示允许局域网设备使用此 DNS）
   default-nameserver: #基础dns，仅解析 DNS 配置里出现的域名
     - 223.5.5.5
     - 8.8.8.8
@@ -105,7 +99,7 @@ dns:
     - https://dns.google/dns-query
     - https://cloudflare-dns.com/dns-query
   nameserver-policy: # dns分流
-    "geosite:cn,private": # 国内域名走国内dns，加快日常访问速度
+    "rule-set:private_domain,cn_domain": # 国内域名走国内dns，加快日常访问速度
       - https://dns.alidns.com/dns-query
       - https://doh.pub/dns-query
   proxy-server-nameserver: # 解析节点配置里出现的域名
@@ -113,8 +107,15 @@ dns:
     - https://dns.google/dns-query
 
 # ———————————————— 5. 代理分组 ————————————————
+
+# 1. select （手动选择组）
+# 2. url-test （自动测速选优组）# tolerance: 50 # 定义节点延迟大于多少才切换节点，默认50。# interval: 300 # 单位：秒。定义多久检测一次节点延迟，默认300秒（5分钟）
+# 3. fallback （故障转移/可用性可用组）
+# 4. load-balance（多节点负载均衡组）
+# 5. relay（链式代理/多级跳板组）
+
 proxy-groups:
-# 默认分组
+  # 默认分组
   - name: 默认
     type: select
     proxies: [延迟最低, 手动选择, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 直连]
@@ -123,22 +124,18 @@ proxy-groups:
     type: url-test
     include-all: true
     exclude-type: direct
-    filter: "(?i)^(?!.*(下载专用)).*$"
-    # tolerance: 50 # 定义节点延迟大于多少才切换节点，默认50
-    # interval: 300 # 单位：秒。定义多久检测一次节点延迟，默认300秒（5分钟）
+    filter: "(?i)^(?!.*(下载专用|新加坡)).*$"
 
   - name: 手动选择
     type: select
     include-all: true
     exclude-type: direct
-    
-# 应用分组
+
+  # 应用分组
   - name: AI
-    type: url-test
-    include-all: true
-    exclude-type: direct
-    filter: "(?i)^(?!.*(港|hk|hongkong|hong kong|台|tw|taiwan)).*$"   # AI分组排除香港和台湾节点
-    
+    type: fallback # 故障转移模式：主节点不可用时自动切换备用节点
+    proxies: [日本, 美国, 其它地区]
+
   - name: Google
     type: select
     proxies: [默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低, 直连]
@@ -150,8 +147,8 @@ proxy-groups:
   - name: Microsoft
     type: select
     proxies: [默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低, 直连]
-    
-# 地区分组
+
+  # 地区分组
   - name: 香港
     type: url-test
     include-all: true
@@ -186,55 +183,84 @@ proxy-groups:
     type: url-test
     include-all: true
     exclude-type: direct
-    filter: "(?i)^(?!.*(?:🇭🇰|🇯🇵|🇺🇸|🇸🇬|🇨🇳|港|hk|hongkong|台|tw|taiwan|日|jp|japan|新|sg|singapore|美|us|unitedstates)).*"
+    filter: "(?i)^(?!.*(?:\U0001F1ED\U0001F1F0|\U0001F1EF\U0001F1F5|\U0001F1FA\U0001F1F8|\U0001F1F8\U0001F1EC|\U0001F1E8\U0001F1F3|港|hk|hongkong|台|tw|taiwan|日|jp|japan|新|sg|singapore|美|us|unitedstates)).*"
 
   - name: 国内
     type: select
     proxies: [直连, 默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低]
 
-# 其它分组
+  # 其它分组
   - name: 订阅更新
-    type: fallback
+    type: fallback # 故障转移：直连失败则走代理
     proxies: [直连, 默认]
-    
+
   - name: 漏网之鱼
     type: select
     proxies: [默认, 香港, 台湾, 日本, 新加坡, 美国, 其它地区, 手动选择, 延迟最低, 直连]
 
 # ———————————————— 6. 规则设置 ————————————————
+
 # 格式：路由类型+规则库字段名称+分组名称（优先级，由上往下匹配）
 # GEOSITE类规则需要在 https://github.com/v2fly/domain-list-community/blob/master/data 查找对应的字段名称
 # GEOIP类规则，直接以国家代号简写为字段名称，如：CN: 中国,US: 美国,HK: 香港,JP: 日本
 # ASN类规则的字段（自治系统编号）,需要在特定的系统上查找编号,格式通常是 AS 后接数字，例如： AS4538（中国教育和科研计算机网）。
+# RULE-SET类规则需要在 https://github.com/MetaCubeX/meta-rules-dat/blob/meta/geo/geosite/ 查找对应的字段名称，并且在 rule-providers 段定义好文件路径
 
 rules:
-  - GEOIP,lan,直连,no-resolve
-  
-# 应用分组
+  - RULE-SET,private_domain,直连
+  - RULE-SET,private_ip,直连,no-resolve
 
-  # Bing
-  - GEOSITE,bing,Bing
-  # Microsoft
-  - GEOSITE,microsoft,Microsoft
-  # AI
-  - GEOSITE,openai,AI # openai
-  - GEOSITE,google-gemini,AI # gemini
-  - DOMAIN,grok.com,AI
-  - DOMAIN-SUFFIX,grok.com,AI
-  # Google
-  - GEOSITE,google,Google
-  
-# 其它
-  - GEOSITE,cn,国内
-  - GEOIP,cn,国内
-  - GEOSITE,geolocation-!cn,漏网之鱼 
+  # 应用分组
+  - RULE-SET,openai,AI # OpenAI 相关域名走 AI 分组
+  - RULE-SET,gemini,AI # Google Gemini 相关域名走 AI 分组
+  - RULE-SET,bing,Bing # Bing 相关域名走 Bing 分组
+  - RULE-SET,microsoft,Microsoft # Microsoft 相关域名走 Microsoft 分组
+  - RULE-SET,google,Google # Google 相关域名走 Google 分组
+
+  # 其它分组
+  - RULE-SET,cn_domain,国内 # 国内域名走国内分组
+  - RULE-SET,cn_ip,国内 # 国内 IP 走国内分组
+  - RULE-SET,geolocation-!cn,漏网之鱼 # 非中国地区域名走漏网之鱼
   - MATCH,漏网之鱼
 
 # ———————————————— 7. 规则锚点与在线规则库 ————————————————
+# 规则锚点（定义可复用的规则提供模板）
 rule-anchor:
-  domain: &domain {type: http, interval: 86400, behavior: domain, format: mrs}
+  ip: &ip {type: http, interval: 86400, behavior: ipcidr, format: mrs} # IP 类规则提供模板
+  domain: &domain {type: http, interval: 86400, behavior: domain, format: mrs} # 域名类规则提供模板
 
+# 定义在线数据库文件
 rule-providers:
+  private_domain:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs"
+  google:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs"
+  openai:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/openai.mrs"
+  gemini:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google-gemini.mrs"
+  bing:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/bing.mrs"
+  microsoft:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft.mrs"
+  cn_domain:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs"
+  geolocation-!cn:
+    <<: *domain
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs"
+  private_ip:
+    <<: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/private.mrs"
+  cn_ip:
+    <<: *ip
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"
   fakeip-filter:
     type: http # 规则提供方式：通过网络下载
     behavior: domain # 匹配行为：按域名匹配
